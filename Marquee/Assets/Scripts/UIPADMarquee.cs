@@ -7,8 +7,10 @@ public class UIPADMarquee : MonoBehaviour {
     [SerializeField] private RectTransform _rtRoot = null;
     [SerializeField] private RectTransform _rtText = null;
 
-    [SerializeField] private float MoveDistanceA = 0;
-    [SerializeField] private float MoveDistanceB = 0;
+    [SerializeField] private float _speedEnter = 10;
+    [SerializeField] private float _speedLeave = 2;
+    [SerializeField] private float _delay = 2f; // Seconds
+    [SerializeField] private float _bufferSpace = 20;
     #endregion
 
     #region APIs
@@ -39,17 +41,17 @@ public class UIPADMarquee : MonoBehaviour {
 
             // Step 2
             while (_rtText.anchoredPosition.x > 0) {
-                _rtText.anchoredPosition = new Vector2(_rtText.anchoredPosition.x - MoveDistanceA, 0);
+                _rtText.anchoredPosition = new Vector2(_rtText.anchoredPosition.x - _speedEnter, 0);
                 yield return new WaitForEndOfFrame();
             }
 
             // Step 3
             _rtText.anchoredPosition = Vector2.zero;
-            yield return new WaitForSeconds(1);
+            yield return new WaitForSeconds(_delay);
 
             // Step 4
-            while (_rtText.anchoredPosition.x > -_rtText.rect.size.x) {
-                _rtText.anchoredPosition = new Vector2(_rtText.anchoredPosition.x - MoveDistanceB, 0);
+            while (_rtText.anchoredPosition.x > -_rtText.rect.size.x - _bufferSpace) {
+                _rtText.anchoredPosition = new Vector2(_rtText.anchoredPosition.x - _speedLeave, 0);
                 yield return new WaitForEndOfFrame();
             }
         }
