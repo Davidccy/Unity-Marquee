@@ -11,12 +11,20 @@ public class UISangokuMusou2Marquee : MonoBehaviour {
     }
 
     #region Serialized Field
-    [SerializeField] private bool _isLoop = false;
+    [Header("UI")]
+    [SerializeField] private UIGradientBackground _uiGraBG = null;
     [SerializeField] private TextMeshProUGUI _text = null;
+
+    [Header("Options")]
+    [SerializeField] private bool _isLoop = false;
+    
     [SerializeField] private float _maxSlope;
     [SerializeField] private float _maxOffset;
     [SerializeField] private float _holdTime; // Seconds
-    [SerializeField] private UIGradientBackground _uiGraBG = null;
+
+    [SerializeField] private float _charProgressDelay = 3; // Progress delay than previous character
+    [SerializeField] private float _progressPerFrame = 3;
+    [SerializeField] private float _totalProgress = 60;
     #endregion
 
     #region Mono Behaviour Hooks
@@ -47,19 +55,21 @@ public class UISangokuMusou2Marquee : MonoBehaviour {
     private IEnumerator PlayTextAnimation() {
         Step step = Step.FadeIn;
         float firstCharProgress = 0;
-        float progressPerFrame = 0.05f;
+        bool stepFinished = false;
 
         TMP_TextInfo textInfo = _text.textInfo;
-        int charCount = textInfo.characterCount;
+        string str = _text.text;
+        str = str.TrimEnd();
+        int finalValuableCharIndex = str.Length - 1; // Index of final character which is not empty or a space
 
-        // NOTE:
-        // Progress of a character has 1 frame delay than previous character
-
-        bool stepFinished = false;
+        if (_uiGraBG != null) {
+            _uiGraBG.Play();
+            _uiGraBG.PlayFadeIn();
+        }
 
         // Fade in => Hold on => Fade out => Done
         while (step != Step.Done) {
-            // Reset every time
+            // Reset every frame
             _text.ForceMeshUpdate();
 
             if (step == Step.HoldOn) {
@@ -68,51 +78,53 @@ public class UISangokuMusou2Marquee : MonoBehaviour {
                 stepFinished = true;
             }
             else {
-                for (int i = 0; i < textInfo.characterCount; i++) {
-                    int charIndex = i;
-                    float charProgress = firstCharProgress - charIndex * progressPerFrame * 1.5f;
+                for (int charIndex = 0; charIndex < textInfo.characterCount; charIndex++) {
+                    float charProgress = Mathf.Clamp(firstCharProgress - charIndex * _charProgressDelay, 0, _totalProgress);
 
-                    float offset = 0;
-                    float slope = 0;
-                    float alpha = 0;
-                    if (step == Step.FadeIn) {
-                        offset = Mathf.Clamp(1 - charProgress, 0, 1) * _maxOffset;
-                        slope = Mathf.Clamp(1 - charProgress, 0, 1) * _maxSlope;
-                        alpha = Mathf.Clamp(charProgress, 0, 1);
-                    }
-                    else {
-                        offset = -Mathf.Clamp(charProgress, 0, 1) * _maxOffset;
-                        slope = -Mathf.Clamp(charProgress, 0, 1) * _maxSlope;
-                        alpha = Mathf.Clamp(1 - charProgress, 0, 1);
-                    }
+                    // NOTE:
+                    // If character is empty or a space
+                    // there is no vertices info in "meshInfo.vertices"
+                    TMP_CharacterInfo charInfo = textInfo.characterInfo[charIndex];
+                    if (!string.IsNullOrEmpty(charInfo.character.ToString()) && !string.IsNullOrWhiteSpace(charInfo.character.ToString())) {
+                        float offset = 0;
+                        float slope = 0;
+                        float alpha = 0;
 
-                    TMP_CharacterInfo charInfo = textInfo.characterInfo[i];
-                    //if (!charInfo.isVisible) {
-                    //    continue;
-                    //}
-
-                    if (charIndex == textInfo.characterCount - 1 && charProgress >= 1) {
-                        stepFinished = true;
-                    }
-
-                    // Vertex
-                    Vector3[] vertices = textInfo.meshInfo[charInfo.materialReferenceIndex].vertices;
-                    for (int j = 0; j < 4; j++) {
-                        Vector3 oriVec = vertices[charInfo.vertexIndex + j];
-                        if (j == 0 || j == 3) {
-                            vertices[charInfo.vertexIndex + j] = oriVec + Vector3.right * offset;
+                        if (step == Step.FadeIn) {
+                            offset = Mathf.Clamp((_totalProgress - charProgress) / _totalProgress, 0, 1) * _maxOffset;
+                            slope = Mathf.Clamp((_totalProgress - charProgress) / _totalProgress, 0, 1) * _maxSlope;
+                            alpha = Mathf.Clamp(charProgress / _totalProgress, 0, 1);
                         }
                         else {
-                            vertices[charInfo.vertexIndex + j] = oriVec + Vector3.right * (slope + offset);
+                            offset = -Mathf.Clamp(charProgress / _totalProgress, 0, 1) * _maxOffset;
+                            slope = -Mathf.Clamp(charProgress/ _totalProgress, 0, 1) * _maxSlope;
+                            alpha = Mathf.Clamp((_totalProgress - charProgress) / _totalProgress, 0, 1);
+                        }
+
+                        // Vertex
+                        Vector3[] vertices = textInfo.meshInfo[charInfo.materialReferenceIndex].vertices;
+                        for (int j = 0; j < 4; j++) {
+                            Vector3 oriVec = vertices[charInfo.vertexIndex + j];
+                            if (j == 0 || j == 3) {
+                                vertices[charInfo.vertexIndex + j] = oriVec + Vector3.right * offset;
+                            }
+                            else {
+                                vertices[charInfo.vertexIndex + j] = oriVec + Vector3.right * (slope + offset);
+                            }
+                        }
+
+                        // Color (Change alpha value only currently)
+                        Color32[] colors = textInfo.meshInfo[charInfo.materialReferenceIndex].colors32;
+                        for (int j = 0; j < 4; j++) {
+                            Color32 oriColor = colors[charInfo.vertexIndex + j];
+                            Color newColor = new Color(oriColor.r, oriColor.g, oriColor.b, alpha);
+                            colors[charInfo.vertexIndex + j] = newColor;
                         }
                     }
 
-                    // Color (Change alpha value only currently)
-                    Color32[] colors = textInfo.meshInfo[charInfo.materialReferenceIndex].colors32;
-                    for (int j = 0; j < 4; j++) {
-                        Color32 oriColor = colors[charInfo.vertexIndex + j];
-                        Color newColor = new Color(oriColor.r, oriColor.g, oriColor.b, alpha);
-                        colors[charInfo.vertexIndex + j] = newColor;
+                    // Check is step finished
+                    if (charIndex == finalValuableCharIndex && charProgress >= _totalProgress) {
+                        stepFinished = true;
                     }
                 }
 
@@ -123,7 +135,7 @@ public class UISangokuMusou2Marquee : MonoBehaviour {
                     _text.UpdateGeometry(meshInfo.mesh, i);
                 }
 
-                firstCharProgress += progressPerFrame;
+                firstCharProgress += _progressPerFrame;
 
                 yield return new WaitForEndOfFrame();
             }
@@ -144,7 +156,7 @@ public class UISangokuMusou2Marquee : MonoBehaviour {
                     }
                     else {
                         step = Step.Done;
-                    }                    
+                    }
                 }
 
                 firstCharProgress = 0;
@@ -152,7 +164,9 @@ public class UISangokuMusou2Marquee : MonoBehaviour {
             }
         }
 
-        _text.ForceMeshUpdate();
+        if (_uiGraBG != null) {
+            _uiGraBG.PlayFadeOut();
+        }
     }
     #endregion
 }

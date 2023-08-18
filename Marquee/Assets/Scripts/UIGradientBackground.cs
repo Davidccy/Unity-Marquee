@@ -10,10 +10,14 @@ public class UIGradientBackground : MonoBehaviour {
     #region Serialized Fields
     [SerializeField] private bool _playWhenEnable = false;
     [SerializeField] private Image _imageBG = null;
-    [SerializeField] private float _loopTime = 0;
+    [SerializeField] private float _loopTime = 0; // Must larger than 0
     [SerializeField] private AnimationCurve _aniCurve = default;
     [SerializeField] private Color _colorFrom = Color.white;
     [SerializeField] private Color _colorTo = Color.white;
+
+    [SerializeField] private CanvasGroup _cg = null;
+    [SerializeField] private float _periodFadeIn = 0.2f;
+    [SerializeField] private float _periodFadeOut = 0.2f;
     #endregion
 
     #region Mono Behaviour Hooks
@@ -30,16 +34,62 @@ public class UIGradientBackground : MonoBehaviour {
 
     #region APIs
     public void Play() {
-        StopAllCoroutines();
+        StopCoroutine("PlayAnimation");
         StartCoroutine(PlayAnimation());
     }
 
     public void Stop() {
         StopAllCoroutines();
     }
+
+    public void PlayFadeIn() {
+        StopCoroutine("PlayFadeInAnimation");
+        StopCoroutine("PlayFadeOutAnimation");
+
+        StartCoroutine(PlayFadeInAnimation());
+    }
+
+    public void PlayFadeOut() {
+        StopCoroutine("PlayFadeInAnimation");
+        StopCoroutine("PlayFadeOutAnimation");
+
+        StartCoroutine(PlayFadeOutAnimation());
+    }
     #endregion
 
     #region Internal Methods
+    private IEnumerator PlayFadeInAnimation() {
+        if (_cg == null) { 
+            yield break;
+        }
+
+        _cg.alpha = 0;
+
+        float progressTime = 0;
+        while (_cg.alpha < 1) {
+            yield return new WaitForEndOfFrame();
+
+            progressTime += Time.deltaTime;
+            _cg.alpha = Mathf.Clamp01(1 * (progressTime / _periodFadeIn));
+        }
+    }
+
+    private IEnumerator PlayFadeOutAnimation() {
+        if (_cg == null) {
+            yield break;
+        }
+
+        _cg.alpha = 1;
+
+        float progressTime = 0;
+        while (_cg.alpha > 0) {
+            yield return new WaitForEndOfFrame();
+
+            progressTime += Time.deltaTime;
+            _cg.alpha = Mathf.Clamp01(1 - 1 * (progressTime / _periodFadeOut));
+        }
+    }
+
     private IEnumerator PlayAnimation() {
         float passedTime = 0;
         bool reverse = false;
@@ -47,7 +97,7 @@ public class UIGradientBackground : MonoBehaviour {
         float progress = 0;
         float curveValue = 0;
         while (true) {
-            loopTime = Math.Max(0.05f, _loopTime);
+            loopTime = Math.Max(0.05f, _loopTime); // Loop time should larger than 0
 
             if (!reverse && passedTime >= loopTime) {
                 reverse = true;
