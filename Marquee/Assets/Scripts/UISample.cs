@@ -10,6 +10,8 @@ public class UISample : MonoBehaviour {
     [SerializeField] private UISangokuMusou2Marquee _marqueeSangokuMusou2B = null;
     [SerializeField] private UISangokuMusou2Marquee _marqueeSangokuMusou2C = null;
     [SerializeField] private UISangokuMusou2Marquee _marqueeSangokuMusou2D = null;
+    [SerializeField] private UISangokuMusou3Marquee _marqueeSangokuMusou3A = null;
+    [SerializeField] private UISangokuMusou3Marquee _marqueeSangokuMusou3B = null;
     #endregion
 
     #region Mono Behaviour Hooks
@@ -31,6 +33,9 @@ public class UISample : MonoBehaviour {
         _marqueeSangokuMusou2B.Play();
         _marqueeSangokuMusou2C.Play();
         _marqueeSangokuMusou2D.Play();
+
+        _marqueeSangokuMusou3A.Play();
+        _marqueeSangokuMusou3B.Play();
     }
     #endregion
 }
